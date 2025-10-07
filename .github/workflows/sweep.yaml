@@ -2,7 +2,7 @@ name: Sweep & Merge Exercism Sync PRs
 
 on:
   schedule:
-    - cron: '0 13 * * *'     # daily at 13:00 UTC (09:00 ET)
+    - cron: '0 13 * * *'   # daily at 13:00 UTC (09:00 ET)
   workflow_dispatch: {}
 
 permissions:
@@ -14,15 +14,28 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Sanity — show open PRs
-        run: gh pr list --state open --json number,baseRefName,author,title -q '.[] | "\(.number)\t\(.baseRefName)\t\(.author.login)\t\(.title)"'
+      REPO: ${{ github.repository }} # e.g. nhdewitt/exercism-solutions
 
-      # If you want to merge ONLY the Exercism syncer's PRs:
-      - name: Merge App-authored PRs (squash)
+    steps:
+      - name: Sanity — list open PRs (author, title)
+        run: >
+          gh pr list --repo "$REPO" --state open --limit 200
+          --json number,author,title
+          -q '.[] | "\(.number)\t\(.author.login)\t\(.title)"'
+
+      - name: Merge App-authored PRs (squash + delete branch)
         run: |
           set -euo pipefail
-          gh pr list \
-            --search 'is:open is:pr author:app/exercism-solutions-syncer' \
-            --json number -q '.[].number' \
-            | xargs -r -I{} gh pr merge {} --squash --delete-branch
+          prs=$(gh pr list --repo "$REPO" \
+                 --search 'is:open is:pr author:app/exercism-solutions-syncer' \
+                 --limit 200 \
+                 --json number -q '.[].number')
+          if [ -z "$prs" ]; then
+            echo "No open PRs from app/exercism-solutions-syncer."
+            exit 0
+          fi
+
+          for n in $prs; do
+            echo "Merging #$n (squash)…"
+            gh pr merge "$n" --repo "$REPO" --squash --delete-branch
+          done
