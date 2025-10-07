@@ -1,0 +1,28 @@
+name: Sweep & Merge Exercism Sync PRs
+
+on:
+  schedule:
+    - cron: '0 13 * * *'     # daily at 13:00 UTC (09:00 ET)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Sanity — show open PRs
+        run: gh pr list --state open --json number,baseRefName,author,title -q '.[] | "\(.number)\t\(.baseRefName)\t\(.author.login)\t\(.title)"'
+
+      # If you want to merge ONLY the Exercism syncer's PRs:
+      - name: Merge App-authored PRs (squash)
+        run: |
+          set -euo pipefail
+          gh pr list \
+            --search 'is:open is:pr author:app/exercism-solutions-syncer' \
+            --json number -q '.[].number' \
+            | xargs -r -I{} gh pr merge {} --squash --delete-branch
