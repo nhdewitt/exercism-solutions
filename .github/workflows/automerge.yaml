@@ -25,5 +25,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_METHOD: squash
           AUTOCLOSE: "true"
-          MERGE_FILTER_AUTHOR: exercism-solutions-syncer
+          MERGE_FILTER_AUTHOR: app/exercism-solutions-syncer
           MERGE_LABELS: ""
